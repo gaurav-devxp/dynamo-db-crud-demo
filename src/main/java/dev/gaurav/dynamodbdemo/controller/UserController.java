@@ -3,20 +3,48 @@ package dev.gaurav.dynamodbdemo.controller;
 import dev.gaurav.dynamodbdemo.service.UserService;
 import lombok.RequiredArgsConstructor;
 import dev.gaurav.dynamodbdemo.model.User;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
+import software.amazon.awssdk.thirdparty.jackson.core.JsonProcessingException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
     private final UserService userService;
+    private final SqsClient sqsClient;
+    private final ObjectMapper objectMapper;
+
+    @Value("${aws.sqs.queueUrl}")
+    private String queueUrl;
 
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
-        return ResponseEntity.ok(userService.createUser(user));
+        User createdUser = userService.createUser(user);
+        // Send the created user payload to SQS
+        try {
+            String userJson = objectMapper.writeValueAsString(createdUser);
+
+            SendMessageRequest sendMsgRequest = SendMessageRequest.builder()
+                    .queueUrl(queueUrl)
+                    .messageBody(userJson)
+                    .build();
+            sqsClient.sendMessage(sendMsgRequest);
+            log.info("Published created user to SQS queue: {}", createdUser.getId());
+
+        } catch (Exception e) {
+            log.error("Error sending message to SQS", e);
+        }
+
+        return ResponseEntity.ok(createdUser);
     }
 
     @GetMapping("/{id}")
