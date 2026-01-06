@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
-import software.amazon.awssdk.thirdparty.jackson.core.JsonProcessingException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
